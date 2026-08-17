@@ -104,7 +104,11 @@ def chat(request: ChatRequest) -> ChatResponse:
             ),
         )
         answer = (response.text or "").strip()
-        debug_response = response.model_dump(mode="json", exclude_none=True)
+        debug_response = response.model_dump(
+            mode="json",
+            exclude_none=True,
+            exclude={"sdk_http_response"},
+        )
     except errors.APIError as exc:
         if exc.code == 429:
             detail = "Лимит запросов к ИИ временно исчерпан. Попробуйте чуть позже."

@@ -433,7 +433,8 @@ h2 {
 .debug-section pre {
   max-height: 260px;
   margin: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 15px;
   border: 1px solid #343a32;
   border-radius: 10px;
@@ -441,7 +442,9 @@ h2 {
   background: #171a16;
   font: 0.7rem/1.55 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   tab-size: 2;
-  white-space: pre;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .debug-section pre::-webkit-scrollbar {
