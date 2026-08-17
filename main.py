@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -51,8 +52,14 @@ class ChatRequest(BaseModel):
         return value
 
 
+class ChatDebug(BaseModel):
+    request: dict[str, Any]
+    response: dict[str, Any]
+
+
 class ChatResponse(BaseModel):
     answer: str
+    debug: ChatDebug
 
 
 @app.get("/", include_in_schema=False)
@@ -74,11 +81,21 @@ def chat(request: ChatRequest) -> ChatResponse:
         f"Текущий статус паспорта: {status}\n\n"
         f"Сообщение гостя:\n{request.message}"
     )
+    model_name = os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
+    debug_request = {
+        "model": model_name,
+        "contents": business_context,
+        "config": {
+            "system_instruction": SYSTEM_INSTRUCTION,
+            "temperature": 0.3,
+            "max_output_tokens": 500,
+        },
+    }
 
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model=os.getenv("GEMINI_MODEL", DEFAULT_MODEL),
+            model=model_name,
             contents=business_context,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
@@ -87,6 +104,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             ),
         )
         answer = (response.text or "").strip()
+        debug_response = response.model_dump(mode="json", exclude_none=True)
     except errors.APIError as exc:
         if exc.code == 429:
             detail = "Лимит запросов к ИИ временно исчерпан. Попробуйте чуть позже."
@@ -107,4 +125,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             detail="Модель не вернула текстовый ответ. Попробуйте переформулировать сообщение.",
         )
 
-    return ChatResponse(answer=answer)
+    return ChatResponse(
+        answer=answer,
+        debug=ChatDebug(request=debug_request, response=debug_response),
+    )

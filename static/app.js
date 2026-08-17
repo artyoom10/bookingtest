@@ -8,6 +8,8 @@ const answerPanel = document.querySelector("#answer-panel");
 const answerText = document.querySelector("#answer-text");
 const statusCaption = document.querySelector("#status-caption");
 const statusInputs = document.querySelectorAll('[name="passport-status"]');
+const debugRequest = document.querySelector("#debug-request");
+const debugResponse = document.querySelector("#debug-response");
 const MAX_TEXTAREA_HEIGHT = 320;
 
 const getPassportReceived = () =>
@@ -51,6 +53,10 @@ const extractError = (payload, fallback) => {
   return fallback;
 };
 
+const renderDebug = (element, value) => {
+  element.textContent = JSON.stringify(value, null, 2);
+};
+
 messageInput.addEventListener("input", () => {
   resizeMessageInput();
   charCount.textContent = messageInput.value.length;
@@ -79,14 +85,22 @@ form.addEventListener("submit", async (event) => {
   answerText.className = "answer-text";
   answerText.textContent = "ИИ формирует ответ...";
 
+  const requestPayload = {
+    passport_received: getPassportReceived(),
+    message,
+  };
+  renderDebug(debugRequest, {
+    method: "POST",
+    path: "/api/chat",
+    body: requestPayload,
+  });
+  renderDebug(debugResponse, { status: "Ожидание ответа Gemini API" });
+
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        passport_received: getPassportReceived(),
-        message,
-      }),
+      body: JSON.stringify(requestPayload),
     });
 
     let payload = {};
@@ -94,6 +108,18 @@ form.addEventListener("submit", async (event) => {
       payload = await response.json();
     } catch {
       // The fallback below is clearer than exposing a non-JSON server response.
+    }
+
+    if (payload?.debug?.request) {
+      renderDebug(debugRequest, payload.debug.request);
+    }
+    if (payload?.debug?.response) {
+      renderDebug(debugResponse, payload.debug.response);
+    } else {
+      renderDebug(debugResponse, {
+        http_status: response.status,
+        body: payload,
+      });
     }
 
     if (!response.ok) {
@@ -106,6 +132,9 @@ form.addEventListener("submit", async (event) => {
       error instanceof TypeError
         ? "Не удалось связаться с сервером. Проверьте соединение и попробуйте ещё раз."
         : error.message;
+    if (error instanceof TypeError) {
+      renderDebug(debugResponse, { error: "network_error", message });
+    }
     showAnswer(message, "error");
   } finally {
     setLoading(false);
