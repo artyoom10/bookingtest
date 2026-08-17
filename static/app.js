@@ -1,3 +1,12 @@
+const authGate = document.querySelector("#auth-gate");
+const appLayout = document.querySelector("#app-layout");
+const loginForm = document.querySelector("#login-form");
+const passwordInput = document.querySelector("#password");
+const passwordToggle = document.querySelector("#password-toggle");
+const loginSubmit = document.querySelector("#login-submit");
+const loginButtonLabel = loginSubmit.querySelector(".login-button-label");
+const loginError = document.querySelector("#login-error");
+const logoutButton = document.querySelector("#logout-button");
 const form = document.querySelector("#chat-form");
 const messageInput = document.querySelector("#message");
 const messageError = document.querySelector("#message-error");
@@ -7,10 +16,18 @@ const buttonLabel = submitButton.querySelector(".button-label");
 const answerPanel = document.querySelector("#answer-panel");
 const answerText = document.querySelector("#answer-text");
 const statusCaption = document.querySelector("#status-caption");
+const statusCaptionText = document.querySelector("#status-caption-text");
 const statusInputs = document.querySelectorAll('[name="passport-status"]');
 const debugRequest = document.querySelector("#debug-request");
 const debugResponse = document.querySelector("#debug-response");
 const MAX_TEXTAREA_HEIGHT = 320;
+const MIN_TEXTAREA_HEIGHT = 116;
+const TEXTAREA_HEIGHT_STEP = 26;
+const TEXTAREA_HEIGHT_CLASSES = Array.from(
+  { length: 9 },
+  (_, index) => `message-height-${index + 1}`,
+);
+let sessionExpiryTimer;
 
 const getPassportReceived = () =>
   document.querySelector('[name="passport-status"]:checked').value === "true";
@@ -18,10 +35,9 @@ const getPassportReceived = () =>
 const updateStatusCaption = () => {
   const received = getPassportReceived();
   statusCaption.className = `status-caption status-caption--${received ? "received" : "pending"}`;
-  statusCaption.innerHTML = `
-    <span class="status-dot" aria-hidden="true"></span>
-    ${received ? "Документ принят и учтён" : "Ожидаем документ от гостя"}
-  `;
+  statusCaptionText.textContent = received
+    ? "Документ принят и учтён"
+    : "Ожидаем документ от гостя";
 };
 
 const setLoading = (loading) => {
@@ -31,11 +47,15 @@ const setLoading = (loading) => {
 };
 
 const resizeMessageInput = () => {
-  messageInput.style.height = "auto";
-  const height = Math.min(messageInput.scrollHeight, MAX_TEXTAREA_HEIGHT);
-  messageInput.style.height = `${height}px`;
-  messageInput.style.overflowY =
-    messageInput.scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
+  messageInput.classList.remove(...TEXTAREA_HEIGHT_CLASSES, "message-overflow");
+  messageInput.classList.add(TEXTAREA_HEIGHT_CLASSES[0]);
+  const contentHeight = messageInput.scrollHeight;
+  const heightIndex = Math.min(
+    TEXTAREA_HEIGHT_CLASSES.length - 1,
+    Math.max(0, Math.ceil((contentHeight - MIN_TEXTAREA_HEIGHT) / TEXTAREA_HEIGHT_STEP)),
+  );
+  messageInput.classList.replace(TEXTAREA_HEIGHT_CLASSES[0], TEXTAREA_HEIGHT_CLASSES[heightIndex]);
+  messageInput.classList.toggle("message-overflow", contentHeight > MAX_TEXTAREA_HEIGHT);
 };
 
 const showAnswer = (text, state = "success") => {
@@ -57,6 +77,57 @@ const renderDebug = (element, value) => {
   element.textContent = JSON.stringify(value, null, 2);
 };
 
+const scheduleSessionExpiry = (expiresIn) => {
+  window.clearTimeout(sessionExpiryTimer);
+  sessionExpiryTimer = window.setTimeout(() => {
+    lockApp("Сессия истекла. Введите пароль снова.");
+  }, Math.max(1, expiresIn) * 1000);
+};
+
+const lockApp = (message = "") => {
+  window.clearTimeout(sessionExpiryTimer);
+  document.body.classList.add("auth-locked");
+  authGate.hidden = false;
+  appLayout.setAttribute("inert", "");
+  appLayout.setAttribute("aria-hidden", "true");
+  loginError.textContent = message;
+  passwordInput.value = "";
+  passwordInput.type = "password";
+  passwordToggle.setAttribute("aria-pressed", "false");
+  passwordToggle.setAttribute("aria-label", "Показать пароль");
+  window.requestAnimationFrame(() => passwordInput.focus());
+};
+
+const unlockApp = (expiresIn) => {
+  document.body.classList.remove("auth-locked");
+  authGate.hidden = true;
+  appLayout.removeAttribute("inert");
+  appLayout.setAttribute("aria-hidden", "false");
+  loginError.textContent = "";
+  passwordInput.value = "";
+  scheduleSessionExpiry(expiresIn);
+};
+
+const checkSession = async () => {
+  try {
+    const response = await fetch("/api/session", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(extractError(payload, "Не удалось проверить сессию."));
+    }
+    if (payload.authenticated) {
+      unlockApp(payload.expires_in);
+    } else {
+      lockApp();
+    }
+  } catch (error) {
+    lockApp(error.message || "Сервис авторизации временно недоступен.");
+  }
+};
+
 messageInput.addEventListener("input", () => {
   resizeMessageInput();
   charCount.textContent = messageInput.value.length;
@@ -68,6 +139,59 @@ messageInput.addEventListener("input", () => {
 
 statusInputs.forEach((input) => input.addEventListener("change", updateStatusCaption));
 resizeMessageInput();
+
+passwordToggle.addEventListener("click", () => {
+  const showPassword = passwordInput.type === "password";
+  passwordInput.type = showPassword ? "text" : "password";
+  passwordToggle.setAttribute("aria-pressed", String(showPassword));
+  passwordToggle.setAttribute("aria-label", showPassword ? "Скрыть пароль" : "Показать пароль");
+  passwordInput.focus();
+});
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const password = passwordInput.value;
+  if (!password) {
+    loginError.textContent = "Введите пароль.";
+    passwordInput.focus();
+    return;
+  }
+
+  loginSubmit.disabled = true;
+  loginSubmit.classList.add("is-loading");
+  loginButtonLabel.textContent = "Проверяем...";
+  loginError.textContent = "";
+
+  try {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(extractError(payload, "Не удалось выполнить вход."));
+    }
+    unlockApp(payload.expires_in);
+  } catch (error) {
+    passwordInput.value = "";
+    loginError.textContent = error.message || "Не удалось выполнить вход.";
+    passwordInput.focus();
+  } finally {
+    loginSubmit.disabled = false;
+    loginSubmit.classList.remove("is-loading");
+    loginButtonLabel.textContent = "Войти";
+  }
+});
+
+logoutButton.addEventListener("click", async () => {
+  try {
+    await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
+  } finally {
+    lockApp();
+  }
+});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -99,6 +223,7 @@ form.addEventListener("submit", async (event) => {
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestPayload),
     });
@@ -123,6 +248,9 @@ form.addEventListener("submit", async (event) => {
     }
 
     if (!response.ok) {
+      if (response.status === 401) {
+        lockApp("Сессия истекла. Введите пароль снова.");
+      }
       throw new Error(extractError(payload, "Не удалось получить ответ. Попробуйте ещё раз."));
     }
 
@@ -140,3 +268,5 @@ form.addEventListener("submit", async (event) => {
     setLoading(false);
   }
 });
+
+checkSession();

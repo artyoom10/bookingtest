@@ -42,11 +42,23 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-Создайте `.env` на основе `.env.example` и укажите ключ, полученный в Google AI Studio:
+Создайте `.env` на основе `.env.example`, укажите ключ Gemini, пароль длиной не
+менее 12 символов и отдельный случайный секрет для подписи сессий:
 
 ```dotenv
 GEMINI_API_KEY=your_api_key_here
 GEMINI_MODEL=gemini-3.1-flash-lite
+PASSWORD=change_me
+SESSION_SECRET=generate_me
+```
+
+Значения `change_me` и `generate_me` намеренно не проходят проверку конфигурации:
+замените оба перед запуском.
+
+Безопасный `SESSION_SECRET` можно сгенерировать локально:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
 Запустите приложение:
@@ -73,12 +85,20 @@ uvicorn main:app --reload
 - `GEMINI_API_KEY` — обязательный API-ключ Gemini.
 - `GEMINI_MODEL` — необязательный идентификатор модели; по умолчанию используется
   `gemini-3.1-flash-lite`.
+- `PASSWORD` — обязательный пароль доступа, минимум 12 символов.
+- `SESSION_SECRET` — обязательный независимый случайный секрет длиной минимум
+  32 символа для подписи cookie.
 
-Настоящий API-ключ нельзя добавлять в Git. Файл `.env` исключён через `.gitignore`.
+Пароль, session secret и настоящий API-ключ нельзя добавлять в Git. Файл `.env`
+исключён через `.gitignore`. Сессия действует 5 минут и хранится в подписанной
+`HttpOnly` cookie с `SameSite=Strict`; атрибут `Secure` включается на HTTPS.
+Ограничение попыток входа хранится в памяти экземпляра приложения. Для публичного
+production-доступа дополнительно включите rate limiting на уровне Vercel Firewall.
 
 ## Деплой на Vercel
 
 1. Импортируйте GitHub-репозиторий в Vercel.
 2. В настройках проекта откройте **Settings → Environment Variables**.
-3. Добавьте `GEMINI_API_KEY` и, при необходимости, `GEMINI_MODEL` для нужных окружений.
+3. Добавьте `GEMINI_API_KEY`, `PASSWORD`, `SESSION_SECRET` и, при необходимости,
+   `GEMINI_MODEL` для нужных окружений.
 4. Запустите deployment. Конфигурация FastAPI находится в `vercel.json`.
