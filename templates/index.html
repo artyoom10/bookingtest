@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Прототип интеграции ИИ с данными бронирования" />
+    <title>AI Booking Assistant</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="card" aria-labelledby="page-title">
+        <header class="hero">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M7 10.5h10M8.5 15h7M12 3a9 9 0 1 0 5.64 16L21 21l-1-3.64A9 9 0 0 0 12 3Z" />
+            </svg>
+          </div>
+          <div>
+            <p class="eyebrow">Smart guest support</p>
+            <h1 id="page-title">AI Booking Assistant</h1>
+            <p class="subtitle">Прототип интеграции ИИ с данными бронирования</p>
+          </div>
+        </header>
+
+        <form id="chat-form" novalidate>
+          <fieldset class="form-group status-fieldset">
+            <legend>Статус паспорта</legend>
+            <div class="status-control" role="radiogroup" aria-label="Статус паспорта">
+              <label class="status-option status-option--pending">
+                <input type="radio" name="passport-status" value="false" checked />
+                <span>Паспорт не получен</span>
+              </label>
+              <label class="status-option status-option--received">
+                <input type="radio" name="passport-status" value="true" />
+                <span>Паспорт получен</span>
+              </label>
+            </div>
+            <p id="status-caption" class="status-caption status-caption--pending">
+              <span class="status-dot" aria-hidden="true"></span>
+              Ожидаем документ от гостя
+            </p>
+          </fieldset>
+
+          <div class="form-group">
+            <label for="message">Сообщение гостя</label>
+            <textarea
+              id="message"
+              name="message"
+              rows="5"
+              maxlength="2000"
+              placeholder="Введите сообщение гостя..."
+              aria-describedby="message-hint message-error"
+              required
+            ></textarea>
+            <div class="field-meta">
+              <p id="message-error" class="field-error" role="alert"></p>
+              <p id="message-hint"><span id="char-count">0</span>/2000</p>
+            </div>
+          </div>
+
+          <button id="submit-button" type="submit">
+            <span class="button-icon" aria-hidden="true">✦</span>
+            <span class="button-label">Получить ответ ИИ</span>
+            <span class="spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <section id="answer-panel" class="answer-panel" aria-labelledby="answer-title" aria-live="polite">
+          <div class="answer-heading">
+            <span class="answer-mark" aria-hidden="true">AI</span>
+            <h2 id="answer-title">Ответ ассистента</h2>
+          </div>
+          <p id="answer-text" class="answer-placeholder">
+            Здесь появится персональный ответ с учётом статуса паспорта.
+          </p>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
