@@ -8,6 +8,7 @@ const answerPanel = document.querySelector("#answer-panel");
 const answerText = document.querySelector("#answer-text");
 const statusCaption = document.querySelector("#status-caption");
 const statusInputs = document.querySelectorAll('[name="passport-status"]');
+const MAX_TEXTAREA_HEIGHT = 320;
 
 const getPassportReceived = () =>
   document.querySelector('[name="passport-status"]:checked').value === "true";
@@ -27,6 +28,14 @@ const setLoading = (loading) => {
   buttonLabel.textContent = loading ? "ИИ формирует ответ..." : "Получить ответ ИИ";
 };
 
+const resizeMessageInput = () => {
+  messageInput.style.height = "auto";
+  const height = Math.min(messageInput.scrollHeight, MAX_TEXTAREA_HEIGHT);
+  messageInput.style.height = `${height}px`;
+  messageInput.style.overflowY =
+    messageInput.scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
+};
+
 const showAnswer = (text, state = "success") => {
   answerPanel.classList.remove("answer-panel--loading", "answer-panel--error", "answer-panel--success");
   answerPanel.classList.add(`answer-panel--${state}`);
@@ -43,6 +52,7 @@ const extractError = (payload, fallback) => {
 };
 
 messageInput.addEventListener("input", () => {
+  resizeMessageInput();
   charCount.textContent = messageInput.value.length;
   if (messageInput.value.trim()) {
     messageError.textContent = "";
@@ -51,6 +61,7 @@ messageInput.addEventListener("input", () => {
 });
 
 statusInputs.forEach((input) => input.addEventListener("change", updateStatusCaption));
+resizeMessageInput();
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();

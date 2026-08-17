@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Прототип интеграции ИИ с данными бронирования" />
+    <meta name="description" content="Тестовое задание Кононов А.А." />
     <title>AI Booking Assistant</title>
     <link rel="stylesheet" href="/static/style.css" />
     <script src="/static/app.js" defer></script>
@@ -12,16 +12,8 @@
     <main class="page-shell">
       <section class="card" aria-labelledby="page-title">
         <header class="hero">
-          <div class="logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" role="img">
-              <path d="M7 10.5h10M8.5 15h7M12 3a9 9 0 1 0 5.64 16L21 21l-1-3.64A9 9 0 0 0 12 3Z" />
-            </svg>
-          </div>
-          <div>
-            <p class="eyebrow">Smart guest support</p>
-            <h1 id="page-title">AI Booking Assistant</h1>
-            <p class="subtitle">Прототип интеграции ИИ с данными бронирования</p>
-          </div>
+          <h1 id="page-title">AI Booking Assistant</h1>
+          <p class="subtitle">Тестовое задание Кононов А.А.</p>
         </header>
 
         <form id="chat-form" novalidate>
@@ -48,7 +40,7 @@
             <textarea
               id="message"
               name="message"
-              rows="5"
+              rows="3"
               maxlength="2000"
               placeholder="Введите сообщение гостя..."
               aria-describedby="message-hint message-error"
@@ -61,7 +53,6 @@
           </div>
 
           <button id="submit-button" type="submit">
-            <span class="button-icon" aria-hidden="true">✦</span>
             <span class="button-label">Получить ответ ИИ</span>
             <span class="spinner" aria-hidden="true"></span>
           </button>
@@ -69,7 +60,7 @@
 
         <section id="answer-panel" class="answer-panel" aria-labelledby="answer-title" aria-live="polite">
           <div class="answer-heading">
-            <span class="answer-mark" aria-hidden="true">AI</span>
+            <span class="answer-dot" aria-hidden="true"></span>
             <h2 id="answer-title">Ответ ассистента</h2>
           </div>
           <p id="answer-text" class="answer-placeholder">
